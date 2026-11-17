@@ -1,0 +1,15 @@
+node_modules/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.tsbuildinfo
+*.db
+frontend/dist/
+.env
+.env.*
+!.env.example
+.DS_Store
+/KostMate.pdf
+playwright-report/
+test-results/
