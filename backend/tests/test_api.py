@@ -196,3 +196,22 @@ def test_event_stream_changes_revision():
         await stream.aclose()
 
     asyncio.run(check())
+
+
+def test_seed_recovers_database_with_preexisting_account(tmp_path, monkeypatch):
+    from backend.db import init_db, connect
+    from backend.seed import seed
+    from backend.security import hash_password
+    monkeypatch.setenv('KOSTMATE_DB', str(tmp_path / 'existing.db'))
+    init_db()
+    with connect() as db:
+        db.execute('INSERT INTO users(name,email,password,role) VALUES (?,?,?,?)',
+                   ('Existing user', 'existing@example.com', hash_password('password123'), 'student'))
+    seed()
+    seed()
+    with connect() as db:
+        assert db.execute('SELECT count(*) FROM properties').fetchone()[0] == 9
+        assert db.execute('SELECT count(*) FROM tenants').fetchone()[0] == 4
+        owner_id = db.execute("SELECT id FROM users WHERE email='owner@kostmate.demo'").fetchone()[0]
+        assert db.execute('SELECT count(*) FROM properties WHERE owner_id=?', (owner_id,)).fetchone()[0] == 9
+        assert db.execute('SELECT count(*) FROM users').fetchone()[0] == 3

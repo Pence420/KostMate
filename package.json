@@ -2,9 +2,13 @@
   "name": "kostmate",
   "private": true,
   "scripts": {
-    "dev": "npm --prefix frontend run dev",
+    "setup": "node scripts/manage.mjs setup",
+    "start": "node scripts/manage.mjs start",
+    "dev": "node scripts/manage.mjs start",
+    "dev:frontend": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
-    "backend": ".venv/bin/python -m uvicorn backend.app:app --reload --port 8000",
-    "test": ".venv/bin/python -m pytest backend/tests -q"
+    "backend": "node scripts/manage.mjs backend",
+    "test": "node scripts/manage.mjs test",
+    "check": "node scripts/manage.mjs check"
   }
 }

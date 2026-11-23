@@ -13,10 +13,12 @@ PHOTO_IDS = [
 
 def seed():
     with connect() as db:
-        if db.execute('SELECT id FROM users LIMIT 1').fetchone():
-            return
         for name, email, role in [('Nadia Putri', 'nadia@kostmate.demo', 'student'), ('Budi Santoso', 'owner@kostmate.demo', 'owner')]:
-            db.execute('INSERT INTO users(name,email,password,role) VALUES (?,?,?,?)', (name, email, hash_password('Kostmate123!'), role))
+            db.execute('INSERT OR IGNORE INTO users(name,email,password,role) VALUES (?,?,?,?)', (name, email, hash_password('Kostmate123!'), role))
+        owner_id = db.execute("SELECT id FROM users WHERE email='owner@kostmate.demo'").fetchone()['id']
+        if db.execute("SELECT id FROM properties WHERE owner_id=? AND name='Kost Sela Kemanggisan'", (owner_id,)).fetchone():
+            return
+        property_ids = []
         data = [
             ('Kost Sela Kemanggisan', 'Kemanggisan', 'BINUS Anggrek', 1850000, 'Putri', 'Eksklusif', 20, 3, 0.4, ['WiFi', 'AC', 'Kamar mandi dalam', 'Dapur bersama']),
             ('Ruang Teduh Residence', 'Alam Sutera', 'BINUS Alam Sutera', 2200000, 'Campur', 'Eksklusif', 24, 5, 0.8, ['WiFi', 'AC', 'Kamar mandi dalam', 'Parkir', 'Laundry']),
@@ -30,15 +32,18 @@ def seed():
         ]
         for i, (name, area, campus, price, gender, kind, total, available, distance, facilities) in enumerate(data):
             photos = [f'https://images.unsplash.com/{PHOTO_IDS[(i+j)%len(PHOTO_IDS)]}?auto=format&fit=crop&w=1200&q=85' for j in range(3)]
-            db.execute('''INSERT INTO properties(owner_id,name,area,campus,address,price,gender,kind,total_rooms,available_rooms,available_from,size,distance,description,facilities,rules,photos,fees,phone,updated_at)
+            cursor = db.execute('''INSERT INTO properties(owner_id,name,area,campus,address,price,gender,kind,total_rooms,available_rooms,available_from,size,distance,description,facilities,rules,photos,fees,phone,updated_at)
                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                       (2, name, area, campus, f'Jl. {area} Raya No. {12+i}, {area}', price, gender, kind, total, available,
+                       (owner_id, name, area, campus, f'Jl. {area} Raya No. {12+i}, {area}', price, gender, kind, total, available,
                         date.today().isoformat(), '3 × 4 m', distance,
                         f'Tempat pulang yang tenang di {area}. Kamar terang dengan sirkulasi udara yang baik, cocok untuk kamu yang ingin fokus kuliah sekaligus menikmati waktu istirahat. Dekat dengan {campus}, tempat makan, dan kebutuhan sehari-hari.',
                         json.dumps(facilities), json.dumps(['Tidak merokok di dalam kamar', 'Jam tenang mulai pukul 22.00', 'Tamu menginap wajib izin pengelola', 'Hewan peliharaan belum diperbolehkan']), json.dumps(photos),
                         'Deposit Rp500.000, dapat dikembalikan sesuai kondisi kamar. Listrik menggunakan token pribadi. WiFi dan air termasuk harga sewa.', '', datetime.now(timezone.utc).isoformat()))
+            property_ids.append(cursor.lastrowid)
+        tenant_ids = []
         for name, room, rent in [('Alya Putri', 'A-01', 1850000), ('Dinda Maharani', 'A-02', 1850000), ('Salsa Nabila', 'A-03', 1850000), ('Citra Ayuning', 'A-04', 1850000)]:
-            db.execute('INSERT INTO tenants(property_id,name,room,monthly_rent) VALUES (1,?,?,?)', (name, room, rent))
+            cursor = db.execute('INSERT INTO tenants(property_id,name,room,monthly_rent) VALUES (?,?,?,?)', (property_ids[0], name, room, rent))
+            tenant_ids.append(cursor.lastrowid)
         month = date.today().strftime('%Y-%m')
-        for tenant in [1, 2, 3]:
+        for tenant in tenant_ids[:3]:
             db.execute('INSERT INTO payments(tenant_id,month,amount,paid_at) VALUES (?,?,?,?)', (tenant, month, 1850000, date.today().isoformat()))
