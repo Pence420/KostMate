@@ -122,6 +122,7 @@ export default function App() {
                 )}
               </NavLink>
               <NavLink to="/pengaduan">Bantuan</NavLink>
+              <NavLink to="/owner" className="mobile-owner-nav">Punya kos?</NavLink>
               {user?.role === "owner" && (
                 <NavLink to="/owner">Dashboard</NavLink>
               )}
