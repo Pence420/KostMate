@@ -2,7 +2,6 @@ import asyncio
 import json
 import os
 import secrets
-import sqlite3
 import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
@@ -12,17 +11,26 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from .db import connect, init_db
-from .models import (ComplaintInput, ComplaintStatus, InquiryInput, Login, PaymentInput,
-                     PropertyInput, Register, TenantInput)
-from .security import hash_password, verify_password
-from .seed import seed
+if __package__:
+    from .db import connect, init_db, integrity_errors, is_postgres
+    from .models import (ComplaintInput, ComplaintStatus, InquiryInput, Login, PaymentInput,
+                         PropertyInput, Register, TenantInput)
+    from .security import hash_password, verify_password
+    from .seed import seed
+else:
+    from db import connect, init_db, integrity_errors, is_postgres
+    from models import (ComplaintInput, ComplaintStatus, InquiryInput, Login, PaymentInput,
+                        PropertyInput, Register, TenantInput)
+    from security import hash_password, verify_password
+    from seed import seed
 
 revision = 0
 
 
 @asynccontextmanager
 async def lifespan(app):
+    if os.environ.get('VERCEL') and not is_postgres():
+        raise RuntimeError('DATABASE_URL atau POSTGRES_URL wajib diisi untuk demo Vercel.')
     init_db()
     if os.environ.get('KOSTMATE_SEED', '1') == '1':
         seed()
@@ -81,7 +89,8 @@ def create_session(db, user_id, response):
     db.execute('DELETE FROM sessions WHERE expires < ?', (int(time.time()),))
     db.execute('INSERT INTO sessions VALUES (?,?,?)', (token, user_id, int(time.time()) + 604800))
     response.set_cookie('kostmate_session', token, httponly=True, samesite='lax',
-                        secure=os.environ.get('COOKIE_SECURE') == '1', max_age=604800)
+                        secure=os.environ.get('COOKIE_SECURE') == '1' or bool(os.environ.get('VERCEL')),
+                        max_age=604800)
 
 
 @app.get('/api/health')
@@ -95,7 +104,7 @@ def register(data: Register, response: Response):
         try:
             cursor = db.execute('INSERT INTO users(name,email,password,role) VALUES (?,?,?,?)',
                                 (data.name.strip(), data.email, hash_password(data.password), data.role))
-        except sqlite3.IntegrityError:
+        except integrity_errors():
             raise HTTPException(409, 'Email ini sudah terdaftar.')
         user = db.execute('SELECT * FROM users WHERE id=?', (cursor.lastrowid,)).fetchone()
         create_session(db, user['id'], response)
@@ -302,7 +311,7 @@ def create_payment(data: PaymentInput, user=Depends(owner)):
         owned_property(db, tenant['property_id'], user)
         try:
             db.execute('INSERT INTO payments(tenant_id,month,amount,paid_at) VALUES (?,?,?,?)', (data.tenant_id, data.month, data.amount, now()))
-        except sqlite3.IntegrityError:
+        except integrity_errors():
             raise HTTPException(409, 'Pembayaran bulan ini sudah tercatat.')
     return {'ok': True}
 

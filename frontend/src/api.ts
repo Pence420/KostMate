@@ -15,6 +15,8 @@ export async function api<T>(
     );
   }
   if (!response.ok) {
+    if (response.status === 404 && response.url.includes('/api/'))
+      throw new Error('Backend belum terpasang di alamat ini. Periksa pengaturan deploy Vercel dan buka /api/health.');
     if (response.status === 401 && !path.startsWith("/auth/"))
       window.dispatchEvent(new Event("kostmate:session-expired"));
     const body = await response.json().catch(() => null);

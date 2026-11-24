@@ -164,6 +164,17 @@ Urutan yang enak dipresentasikan:
 | Perubahan teman tidak muncul                      | Setiap laptop menyimpan database sendiri. Untuk berbagi perubahan, gunakan satu server yang sama; versi ini belum dihosting bersama.      |
 | Halaman GitHub tidak menampilkan aplikasi         | Repo ini source code. Ikuti langkah 1–4; GitHub Pages saja tidak menjalankan backend Python.                                              |
 
+### Demo online di Vercel
+
+Deploy **folder `frontend` saja** akan menampilkan halaman, tetapi `/api/health` menjadi 404 sehingga login dan data tidak berfungsi. Versi repo ini menyiapkan frontend dan FastAPI sebagai dua Vercel Services dalam satu project. Database online tetap diperlukan karena file SQLite di Vercel tidak menyimpan perubahan secara permanen.
+
+1. Di Vercel, buka project KostMate → **Settings → Build and Deployment**. Kosongkan **Root Directory** agar menunjuk ke **akar repo**, bukan `frontend`. Pilih **Framework Preset: Services**. Hapus override Build Command, Output Directory, dan Install Command jika sebelumnya diisi untuk Vite saja.
+2. Di tab **Storage/Marketplace**, sambungkan database **Postgres** (misalnya Neon) ke project ini. Pastikan environment variable `DATABASE_URL` atau `POSTGRES_URL` tersedia untuk **Production** dan berisi URL koneksi Postgres. Jangan tempel URL itu ke GitHub atau README.
+3. Buka **Deployments → Redeploy** untuk commit terbaru dari `main` (pilih Production), lalu tunggu sampai status **Ready**.
+4. Buka `https://alamat-project-mu.vercel.app/api/health`. Hasil yang benar adalah `{"status":"ok"}`. Setelah itu buka halaman utama dan coba login akun demo `nadia@kostmate.demo` atau `owner@kostmate.demo` dengan password `Kostmate123!`.
+
+Jika `/api/health` masih 404, periksa kembali Root Directory dan Framework Preset. Jika menjadi 500, lihat **Logs** pada service `api`; biasanya `DATABASE_URL` belum tersambung atau URL koneksinya salah. Setelah mengubah environment variable, lakukan Redeploy lagi. Data online terpisah dari database di laptop.
+
 **Ingin mengulang data demo dari awal?** Hentikan server dahulu dengan Ctrl+C. Simpan salinan `backend/kostmate.db`, lalu **ganti nama** file itu menjadi `kostmate-backup.db`. Jalankan `npm start`; database demo baru akan dibuat. Data lama tetap ada di file backup. Jika memakai `KOSTMATE_DB` khusus, lokasi filenya mengikuti variabel itu.
 
 ## Batas prototype

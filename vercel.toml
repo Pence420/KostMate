@@ -1,0 +1,20 @@
+[services.web]
+root = "frontend/"
+framework = "vite"
+
+[[services.web.rewrites]]
+source = "/(.*)"
+destination = "/index.html"
+
+[services.api]
+root = "backend/"
+framework = "fastapi"
+entrypoint = "main:app"
+
+[[rewrites]]
+source = "/api/(.*)"
+destination = { service = "api" }
+
+[[rewrites]]
+source = "/(.*)"
+destination = { service = "web" }

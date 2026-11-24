@@ -1,8 +1,12 @@
 import json
 from datetime import date, datetime, timezone
 
-from .db import connect
-from .security import hash_password
+if __package__:
+    from .db import connect, is_postgres
+    from .security import hash_password
+else:
+    from db import connect, is_postgres
+    from security import hash_password
 
 PHOTO_IDS = [
     'photo-1616486338812-3dadae4b4ace', 'photo-1615874694520-474822394e73',
@@ -13,6 +17,8 @@ PHOTO_IDS = [
 
 def seed():
     with connect() as db:
+        if is_postgres():
+            db.execute('SELECT pg_advisory_xact_lock(4202026)')
         for name, email, role in [('Nadia Putri', 'nadia@kostmate.demo', 'student'), ('Budi Santoso', 'owner@kostmate.demo', 'owner')]:
             db.execute('INSERT OR IGNORE INTO users(name,email,password,role) VALUES (?,?,?,?)', (name, email, hash_password('Kostmate123!'), role))
         owner_id = db.execute("SELECT id FROM users WHERE email='owner@kostmate.demo'").fetchone()['id']

@@ -1,15 +1,77 @@
 import os
 import sqlite3
+import re
 from contextlib import contextmanager
 from pathlib import Path
 
 
+def is_postgres():
+    return bool(database_url())
+
+
+def database_url():
+    return os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
+
+
+def integrity_errors():
+    try:
+        import psycopg
+        return (sqlite3.IntegrityError, psycopg.IntegrityError)
+    except ImportError:
+        return (sqlite3.IntegrityError,)
+
+
+class PostgresConnection:
+    def __init__(self, url):
+        import psycopg
+        from psycopg.rows import dict_row
+        self.db = psycopg.connect(url, row_factory=dict_row)
+
+    def execute(self, sql, params=()):
+        ignore_conflict = sql.lstrip().upper().startswith('INSERT OR IGNORE INTO')
+        sql = sql.replace('?', '%s')
+        sql = re.sub(r'^INSERT OR IGNORE INTO', 'INSERT INTO', sql, flags=re.I)
+        if ignore_conflict:
+            sql += ' ON CONFLICT DO NOTHING'
+        if sql.lstrip().upper().startswith('INSERT INTO') and 'RETURNING' not in sql.upper():
+            if re.search(r'INSERT INTO (users|properties|tenants|inquiries|complaints)\b', sql, re.I):
+                sql += ' RETURNING id'
+        cursor = self.db.execute(sql, params)
+        if sql.rstrip().upper().endswith('RETURNING ID'):
+            row = cursor.fetchone()
+            return InsertResult(row['id'] if row else None)
+        return cursor
+
+    def executescript(self, script):
+        script = re.sub(r'\bid INTEGER PRIMARY KEY\b', 'id BIGSERIAL PRIMARY KEY', script)
+        for statement in script.split(';'):
+            if statement.strip():
+                self.db.execute(statement)
+
+    def commit(self):
+        self.db.commit()
+
+    def rollback(self):
+        self.db.rollback()
+
+    def close(self):
+        self.db.close()
+
+
+class InsertResult:
+    def __init__(self, lastrowid):
+        self.lastrowid = lastrowid
+
+
 @contextmanager
 def connect():
-    path = os.environ.get("KOSTMATE_DB", str(Path(__file__).with_name("kostmate.db")))
-    db = sqlite3.connect(path, timeout=15)
-    db.row_factory = sqlite3.Row
-    db.execute("PRAGMA foreign_keys = ON")
+    if is_postgres():
+        db = PostgresConnection(database_url())
+    else:
+        path = os.environ.get("KOSTMATE_DB", str(Path(__file__).with_name("kostmate.db")))
+        db = sqlite3.connect(path, timeout=15)
+        db.row_factory = sqlite3.Row
+        db.execute("PRAGMA foreign_keys = ON")
     try:
         yield db
         db.commit()
