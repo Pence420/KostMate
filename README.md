@@ -3,6 +3,14 @@
 KostMate adalah **prototype pencarian kos** memakai React, Python FastAPI, dan SQLite.
 Ada pencarian kos, login/daftar, favorit, survei, pengaduan, dan dashboard pemilik.
 
+## Tampilan terbaru
+
+Warna Royal Blue + Silver, dengan tampilan yang menyesuaikan layar laptop dan HP.
+
+| Desktop | HP |
+| --- | --- |
+| <img src="docs/previews/kostmate-desktop.jpg" alt="Tampilan KostMate di desktop" width="680" /> | <img src="docs/previews/kostmate-mobile.jpg" alt="Daftar kos KostMate di HP" width="230" /> |
+
 > GitHub menyimpan kodenya. Untuk mencoba websitenya, unduh dan jalankan di laptop.
 > Mengklik file di GitHub atau membuka `index.html` langsung belum menyalakan aplikasi.
 
@@ -183,5 +191,3 @@ Dependency Python dikunci di `backend/requirements.lock.txt`; dependency React d
 | `COOKIE_SECURE`   | `0`                   | Gunakan `1` hanya pada server HTTPS; localhost HTTP memerlukan `0` |
 
 Prototype dijalankan pada satu proses server. Hosting publik membutuhkan konfigurasi HTTPS, akun/data non-demo, pembatasan login, backup, dan event bersama jika memakai beberapa worker.
-
-![Preview KostMate](docs/previews/kostmate-desktop.jpg)
